@@ -42,7 +42,6 @@ class MainViewModel(private val bleRepository: BleRepository) : ViewModel() {
     /**
      *  Start BLE Scan
      */
-    @RequiresApi(Build.VERSION_CODES.M)
     fun onClickScan(){
         bleRepository.startScan()
     }

@@ -1,5 +1,6 @@
 package com.lilly.ble.ui.main
 
+import android.Manifest
 import android.app.Activity
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
@@ -8,6 +9,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.activity.result.ActivityResult
@@ -32,10 +34,52 @@ class MainActivity : AppCompatActivity() {
     private val viewModel by viewModel<MainViewModel>()
     private var adapter: BleListAdapter? = null
 
+    private var requiredPermissions: Array<String> = arrayOf(
+        Manifest.permission.BLUETOOTH_SCAN,
+        Manifest.permission.BLUETOOTH,
+        Manifest.permission.BLUETOOTH_ADMIN,
+        Manifest.permission.BLUETOOTH_CONNECT,
+        Manifest.permission.ACCESS_COARSE_LOCATION,
+        Manifest.permission.ACCESS_FINE_LOCATION,
+    )
 
-    @RequiresApi(Build.VERSION_CODES.M)
+    private  val requestPermissions = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+
+        permissions.entries.forEach {
+            Log.e("DEBUG", "requestPermissions ${it.key} = ${it.value}")
+            if (!it.value) {
+                requestPermissionLauncher.launch(it.key)
+            }
+        }
+    }
+
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        Log.e("", "isGrant = $isGranted")
+    }
+
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S_V2) {
+            requiredPermissions = arrayOf(
+                Manifest.permission.BLUETOOTH_SCAN,
+                Manifest.permission.BLUETOOTH,
+                Manifest.permission.BLUETOOTH_ADMIN,
+                Manifest.permission.BLUETOOTH_CONNECT,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.NEARBY_WIFI_DEVICES,
+            )
+        }
+
+        if (!hasPermissions(applicationContext, *requiredPermissions)) {
+            requestPermissions.launch(requiredPermissions)
+        }
+
         val binding = DataBindingUtil.setContentView<ActivityMainBinding>(
             this,
             R.layout.activity_main
@@ -57,59 +101,51 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        // check if location permission
-        if (!hasPermissions(this, PERMISSIONS)) {
-            requestPermissions(PERMISSIONS, REQUEST_ALL_PERMISSION)
-        }
-
-
         initObserver(binding)
-
-
-
 
     }
     private fun initObserver(binding: ActivityMainBinding){
-        viewModel.requestEnableBLE.observe(this, {
+        viewModel.requestEnableBLE.observe(this) {
             it.getContentIfNotHandled()?.let {
                 requestEnableBLE()
             }
-        })
-        viewModel.listUpdate.observe(this, {
+        }
+        viewModel.listUpdate.observe(this) {
             it.getContentIfNotHandled()?.let { scanResults ->
                 adapter?.setItem(scanResults)
             }
-        })
+        }
 
 
-        viewModel._isScanning.observe(this,{
-            it.getContentIfNotHandled()?.let{ scanning->
+        viewModel._isScanning.observe(this) {
+            it.getContentIfNotHandled()?.let { scanning ->
                 viewModel.isScanning.set(scanning)
             }
-        })
-        viewModel._isConnect.observe(this,{
-            it.getContentIfNotHandled()?.let{ connect->
+        }
+        viewModel._isConnect.observe(this) {
+            it.getContentIfNotHandled()?.let { connect ->
                 viewModel.isConnect.set(connect)
             }
-        })
-        viewModel.statusTxt.observe(this,{
+        }
+        viewModel.statusTxt.observe(this) {
 
-           binding.statusText.text = it
+            binding.statusText.text = it
 
-        })
+        }
 
-        viewModel.readTxt.observe(this,{
+        viewModel.readTxt.observe(this) {
 
-           binding.txtRead.append(it)
-            
+            binding.txtRead.append(it)
+
             if ((binding.txtRead.measuredHeight - binding.scroller.scrollY) <=
-                (binding.scroller.height + binding.txtRead.lineHeight)) {
+                (binding.scroller.height + binding.txtRead.lineHeight)
+            ) {
                 binding.scroller.post {
                     binding.scroller.smoothScrollTo(0, binding.txtRead.bottom)
                 }
             }
 
-        })
+        }
     }
     override fun onResume() {
         super.onResume()
@@ -135,37 +171,20 @@ class MainActivity : AppCompatActivity() {
         requestEnableBleResult.launch(bleEnableIntent)
     }
 
-    private fun hasPermissions(context: Context?, permissions: Array<String>): Boolean {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && context != null && permissions != null) {
-            for (permission in permissions) {
-                if (ActivityCompat.checkSelfPermission(context, permission)
-                    != PackageManager.PERMISSION_GRANTED) {
-                    return false
-                }
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    private fun hasPermissions(context: Context, vararg permissions: String): Boolean {
+
+        for (permission in permissions) {
+            if (ActivityCompat.checkSelfPermission(
+                    context,
+                    permission
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                return false
             }
+            Log.e("","permission=$permission true")
         }
         return true
     }
-    // Permission check
-    @RequiresApi(Build.VERSION_CODES.M)
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<String?>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        when (requestCode) {
-            REQUEST_ALL_PERMISSION -> {
-                // If request is cancelled, the result arrays are empty.
-                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    Toast.makeText(this, "Permissions granted!", Toast.LENGTH_SHORT).show()
-                } else {
-                    requestPermissions(permissions, REQUEST_ALL_PERMISSION)
-                    Toast.makeText(this, "Permissions must be granted", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-    }
-
 
 }

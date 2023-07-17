@@ -1,5 +1,6 @@
 package com.lilly.ble
 
+import android.annotation.SuppressLint
 import android.bluetooth.*
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
@@ -21,10 +22,10 @@ import kotlin.concurrent.schedule
 
 class BleRepository {
 
-    private val TAG = "Central"
+    private val TAG = "BleRepository"
 
     // ble manager
-    val bleManager: BluetoothManager =
+    private val bleManager: BluetoothManager =
         MyApplication.applicationContext().getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
     // ble adapter
     val bleAdapter: BluetoothAdapter?
@@ -65,6 +66,7 @@ class BleRepository {
     val scrollDown = MutableLiveData<Event<Boolean>>()
 
 
+    @SuppressLint("MissingPermission")
     fun startScan() {
         // check ble adapter and ble enabled
         if (bleAdapter == null || !bleAdapter?.isEnabled!!) {
@@ -85,17 +87,17 @@ class BleRepository {
             .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
             .build()
         // start scan
-        bleAdapter?.bluetoothLeScanner?.startScan(filters, settings, BLEScanCallback)
-        //bleAdapter?.bluetoothLeScanner?.startScan(BLEScanCallback)
+        //bleAdapter?.bluetoothLeScanner?.startScan(filters, settings, BLEScanCallback)
+        bleAdapter?.bluetoothLeScanner?.startScan(BLEScanCallback)
 
         statusTxt = "Scanning...."
         isStatusChange = true
         isScanning.postValue(Event(true))
 
-        Timer("SettingUp", false).schedule(3000) { stopScan() }
+        Timer("SettingUp", false).schedule(3 * 1000) { stopScan() }
     }
 
-    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+    @SuppressLint("MissingPermission")
     fun stopScan(){
         bleAdapter?.bluetoothLeScanner?.stopScan(BLEScanCallback)
         isScanning.postValue(Event(false))
@@ -110,8 +112,9 @@ class BleRepository {
     /**
      * BLE Scan Callback
      */
-    private val BLEScanCallback: ScanCallback = @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+    private val BLEScanCallback: ScanCallback =
     object : ScanCallback() {
+        @SuppressLint("MissingPermission")
         override fun onScanResult(callbackType: Int, result: ScanResult) {
             super.onScanResult(callbackType, result)
             Log.i(TAG, "Remote device name: " + result.device.name)
@@ -133,6 +136,7 @@ class BleRepository {
         /**
          * Add scan result
          */
+        @SuppressLint("MissingPermission")
         private fun addScanResult(result: ScanResult) {
             // get scanned device
             val device = result.device
@@ -154,6 +158,7 @@ class BleRepository {
     /**
      * BLE gattClientCallback
      */
+    @SuppressLint("MissingPermission")
     private val gattClientCallback: BluetoothGattCallback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
             super.onConnectionStateChange(gatt, status, newState)
@@ -264,6 +269,7 @@ class BleRepository {
     /**
      * Connect to the ble device
      */
+    @SuppressLint("MissingPermission")
     fun connectDevice(device: BluetoothDevice?) {
         // update the status
         statusTxt = "Connecting to ${device?.address}"
@@ -276,6 +282,7 @@ class BleRepository {
     /**
      * Disconnect Gatt Server
      */
+    @SuppressLint("MissingPermission")
     fun disconnectGattServer() {
         Log.d(TAG, "Closing Gatt connection")
         // disconnect and close the gatt
@@ -288,6 +295,7 @@ class BleRepository {
         }
     }
 
+    @SuppressLint("MissingPermission")
     fun writeData(cmdByteArray: ByteArray){
         val cmdCharacteristic = BluetoothUtils.findCommandCharacteristic(bleGatt!!)
         // disconnect if the characteristic is not found

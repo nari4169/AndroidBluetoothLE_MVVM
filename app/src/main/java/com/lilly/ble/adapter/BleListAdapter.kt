@@ -13,7 +13,7 @@ import com.lilly.ble.R
 class BleListAdapter
     : RecyclerView.Adapter<BleListAdapter.BleViewHolder>(){
 
-    lateinit var mContext: Context
+    private lateinit var mContext: Context
     private var items: ArrayList<BluetoothDevice>? = ArrayList()
     private lateinit var itemClickListner: ItemClickListener
     lateinit var itemView:View
@@ -37,6 +37,7 @@ class BleListAdapter
     override fun getItemCount(): Int {
         return items?.size?:0
     }
+    @SuppressLint("NotifyDataSetChanged")
     fun setItem(item: ArrayList<BluetoothDevice>?){
 
         if(item==null) return
@@ -47,7 +48,7 @@ class BleListAdapter
 
     inner class BleViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
 
-
+        @SuppressLint("MissingPermission")
         fun bind(currentDevice: BluetoothDevice?) {
             val bleName = itemView.findViewById<TextView>(R.id.ble_name)
             bleName.text = currentDevice?.name
